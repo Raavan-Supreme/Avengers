@@ -1,15 +1,28 @@
 package com.example.demo.dto;
 
+import com.fasterxml.jackson.annotation.JsonAlias;
+import com.fasterxml.jackson.annotation.JsonAnySetter;
 import lombok.Data;
 
-@Data
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
+@Data
 public class Experience {
-    private String company;  // Since your JSON has an empty experience array, add fields as needed later
+    private String company;
+    @JsonAlias({"position"})
     private String role;
     private String duration;
-    private String description;
+    private List<String> description;
+    private List<String> achievements;
+    private String location;
 
-    // Getters and Setters
+    private Map<String, Object> extraInfo = new HashMap<>();
+
+    @JsonAnySetter
+    public void setExtraInfo(String key, Object value) {
+        extraInfo.put(key, value);
+    }
 }
 

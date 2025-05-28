@@ -9,7 +9,5 @@ public class Education {
     private String graduation_year;
     private String gpa;
     private String location;
-
-    // Getters and Setters
 }
 

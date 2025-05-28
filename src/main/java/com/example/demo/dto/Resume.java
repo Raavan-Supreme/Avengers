@@ -1,8 +1,11 @@
 package com.example.demo.dto;
+import com.fasterxml.jackson.annotation.JsonAnySetter;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @Data
 public class Resume {
@@ -17,7 +20,10 @@ public class Resume {
     private List<String> achievements;
     @JsonProperty("additional_info")
     private AdditionalInfo additional_info;
+    private Map<String, Object> extraInfo = new HashMap<>();
 
-    // Getters and Setters
-}
+    @JsonAnySetter
+    public void setExtraInfo(String key, Object value) {
+        extraInfo.put(key, value);
+    }}
 

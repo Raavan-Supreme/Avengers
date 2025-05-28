@@ -2,6 +2,7 @@ package com.example.demo.controller;
 
 import com.example.demo.dto.Resume;
 import com.example.demo.service.ResumeParserService;
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -38,6 +39,7 @@ public class ResumeParserController {
             }
 
             ObjectMapper mapper = new ObjectMapper();
+            mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
             Resume resume = mapper.readValue(result, Resume.class);
             return ResponseEntity.ok(resume);
 

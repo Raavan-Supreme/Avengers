@@ -1,5 +1,6 @@
 package com.example.demo.service;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
@@ -7,6 +8,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -44,8 +46,7 @@ public class ResumeParserService {
     private final HttpClient httpClient = HttpClient.newHttpClient();
 
     // Method 1: Using Google Gemini (FREE and excellent PDF support)
-    public String extractResumeInfoWithGemini(MultipartFile pdfFile) {
-        try {
+    public String extractResumeInfoWithGemini(MultipartFile pdfFile) throws IOException, InterruptedException {
             if (geminiApiKey == null || geminiApiKey.isEmpty()) {
                 return "{\"error\": \"Google Gemini API key not configured\"}";
             }
@@ -57,69 +58,145 @@ public class ResumeParserService {
 
             // Content structure for Gemini
             Map<String, Object> part1 = new HashMap<>();
-            part1.put("text", """
-                You are a professional resume parser. Analyze this PDF resume and extract all information in the following JSON format:
-                {
-                  "personal_info": {
-                    "name": "Full Name",
-                    "email": "email@example.com",
-                    "phone": "phone number",
-                    "address": "full address",
-                    "linkedin": "LinkedIn URL",
-                    "portfolio": "Portfolio/Website URL"
-                  },
-                  "summary": "Professional summary or objective",
-                  "skills": {
-                    "technical": ["skill1", "skill2"],
-                    "soft": ["skill1", "skill2"],
-                    "tools": ["tool1", "tool2"],
-                    "languages": ["language1", "language2"]
-                  },
-                  "experience": [
-                    {
-                      "company": "Company Name",
-                      "position": "Job Title",
-                      "duration": "Start Date - End Date",
-                      "location": "City, Country",
-                      "responsibilities": ["responsibility1", "responsibility2"],
-                      "achievements": ["achievement1", "achievement2"]
-                    }
-                  ],
-                  "education": [
-                    {
-                      "institution": "School/University Name",
-                      "degree": "Degree Type and Major",
-                      "graduation_year": "Year",
-                      "gpa": "GPA if available",
-                      "location": "City, Country"
-                    }
-                  ],
-                  "certifications": [
-                    {
-                      "name": "Certification Name",
-                      "issuer": "Issuing Organization",
-                      "date": "Date Obtained",
-                      "expiry": "Expiry Date if applicable"
-                    }
-                  ],
-                  "projects": [
-                    {
-                      "name": "Project Name",
-                      "description": "Project Description",
-                      "technologies": ["tech1", "tech2"],
-                      "duration": "Project Duration"
-                    }
-                  ],
-                  "achievements": ["achievement1", "achievement2"],
-                  "additional_info": {
-                    "hobbies": ["hobby1", "hobby2"],
-                    "volunteer": ["volunteer experience"],
-                    "references": "References information"
-                  }
-                }
-                
-                Please be thorough and extract all available information from the resume PDF.
-                """);
+        part1.put("text", """
+ You are a professional resume parser. Analyze this PDF resume and extract all information strictly in the following JSON format:
+ {
+   "personal_info": {
+     "name": "Full Name",
+     "email": "email@example.com",
+     "phone": "phone number",
+     "address": "full address",
+     "linkedin": "LinkedIn URL",
+     "portfolio": "Portfolio/Website URL"
+   },
+   "summary": "Professional summary or objective",
+   "skills": {
+     "technical": ["skill1", "skill2"],
+     "soft": ["skill1", "skill2"],
+     "tools": ["tool1", "tool2"],
+     "languages": ["language1", "language2"]
+   },
+   "experience": [
+     {
+       "company": "Company Name",
+       "position": "Job Title",
+       "duration": "Start Date - End Date",
+       "location": "City, Country",
+       "responsibilities": ["responsibility1", "responsibility2"],
+       "achievements": ["achievement1", "achievement2"]
+     }
+   ],
+   "education": [
+     {
+       "institution": "School/University Name",
+       "degree": "Degree Type and Major",
+       "graduation_year": "Year",
+       "gpa": "GPA if available",
+       "location": "City, Country"
+     }
+   ],
+   "certifications": [
+     {
+       "name": "Certification Name",
+       "issuer": "Issuing Organization",
+       "date": "Date Obtained",
+       "expiry": "Expiry Date if applicable"
+     }
+   ],
+   "projects": [
+     {
+       "name": "Project Name",
+       "description": "Project Description",
+       "technologies": ["tech1", "tech2"],
+       "duration": "Project Duration"
+     }
+   ],
+   "achievements": ["achievement1", "achievement2"],
+   "additional_info": {
+     "hobbies": ["hobby1", "hobby2"],
+     "volunteer": ["volunteer experience"],
+     "references": "References information",
+     "extra_info": {
+        "any_other_fields_not_matching_above": "their values"
+     }
+   }
+ }
+
+ 🔸 Correct typos and normalize formatting (e.g., "MySql" → "MySQL", "Reactjs" → "React.js").
+ 🔸 Map the information strictly to this structure. If any field doesn’t fit any above category, add it into the nested 'additional_info.extra_info' map.
+ 🔸 Only return the JSON strictly in the specified structure—no extra text or explanation.
+ 🔸 Be thorough and complete, extracting all available information from the resume PDF.
+
+ Please strictly follow this format.
+""");
+
+//            part1.put("text", """
+//                You are a professional resume parser. Analyze this PDF resume and extract all information in the following JSON format:
+//                {
+//                  "personal_info": {
+//                    "name": "Full Name",
+//                    "email": "email@example.com",
+//                    "phone": "phone number",
+//                    "address": "full address",
+//                    "linkedin": "LinkedIn URL",
+//                    "portfolio": "Portfolio/Website URL"
+//                  },
+//                  "summary": "Professional summary or objective",
+//                  "skills": {
+//                    "technical": ["skill1", "skill2"],
+//                    "soft": ["skill1", "skill2"],
+//                    "tools": ["tool1", "tool2"],
+//                    "languages": ["language1", "language2"]
+//                  },
+//                  "experience": [
+//                    {
+//                      "company": "Company Name",
+//                      "position": "Job Title",
+//                      "duration": "Start Date - End Date",
+//                      "location": "City, Country",
+//                      "responsibilities": ["responsibility1", "responsibility2"],
+//                      "achievements": ["achievement1", "achievement2"]
+//                    }
+//                  ],
+//                  "education": [
+//                    {
+//                      "institution": "School/University Name",
+//                      "degree": "Degree Type and Major",
+//                      "graduation_year": "Year",
+//                      "gpa": "GPA if available",
+//                      "location": "City, Country"
+//                    }
+//                  ],
+//                  "certifications": [
+//                    {
+//                      "name": "Certification Name",
+//                      "issuer": "Issuing Organization",
+//                      "date": "Date Obtained",
+//                      "expiry": "Expiry Date if applicable"
+//                    }
+//                  ],
+//                  "projects": [
+//                    {
+//                      "name": "Project Name",
+//                      "description": "Project Description",
+//                      "technologies": ["tech1", "tech2"],
+//                      "duration": "Project Duration"
+//                    }
+//                  ],
+//                  "achievements": ["achievement1", "achievement2"],
+//                  "additional_info": {
+//                    "hobbies": ["hobby1", "hobby2"],
+//                    "volunteer": ["volunteer experience"],
+//                    "references": "References information"
+//                  }
+//                }
+//                🔸 Correct typos and normalize formatting (e.g., "MySql" → "MySQL", "Reactjs" → "React.js").
+//                🔸 Map the information strictly to this structure. If a field doesn’t fit any category, add it to `additionalInfo.extra_info`.
+//                🔸 Only return the JSON in the specified structure—no extra text or formatting.
+//                🔸 Be thorough and complete.
+//
+//                Please be thorough and extract all available information from the resume PDF.
+//                """);
 
             Map<String, Object> part2 = new HashMap<>();
             Map<String, Object> inlineData = new HashMap<>();
@@ -155,16 +232,10 @@ public class ResumeParserService {
 
             JsonNode result = objectMapper.readTree(response.body());
             return result.path("candidates").get(0).path("content").path("parts").get(0).path("text").asText();
-
-        } catch (Exception e) {
-            log.error("Error processing resume with Gemini", e);
-            return "{\"error\": \"" + e.getMessage() + "\"}";
-        }
     }
 
     // Method 2: Using Claude (Anthropic) - Excellent document understanding
-    public String extractResumeInfoWithClaude(MultipartFile pdfFile) {
-        try {
+    public String extractResumeInfoWithClaude(MultipartFile pdfFile) throws IOException, InterruptedException {
             if (anthropicApiKey == null || anthropicApiKey.isEmpty()) {
                 return "{\"error\": \"Anthropic API key not configured\"}";
             }
@@ -181,6 +252,11 @@ public class ResumeParserService {
             Map<String, Object> content1 = new HashMap<>();
             content1.put("type", "text");
             content1.put("text", """
+               You are a professional and intelligent resume parser. Analyze this PDF resume and extract all information into the following **JSON format**.\s
+               Make sure to:
+              - **Correct any typos** and **standardize formatting** (for example: "MySql" → "MySQL", "Reactjs" → "React.js", "Nodejs" → "Node.js", "Java script" → "JavaScript").
+              - **Return clean and consistent field names** and **avoid spelling mistakes**.
+              - **Follow the provided JSON structure strictly** and return a well-formatted JSON.
                 Please analyze this resume PDF and extract all information in a structured JSON format. Include:
                 - Personal information (name, contact details, links)
                 - Professional summary
@@ -228,16 +304,10 @@ public class ResumeParserService {
 
             JsonNode result = objectMapper.readTree(response.body());
             return result.path("content").get(0).path("text").asText();
-
-        } catch (Exception e) {
-            log.error("Error processing resume with Claude", e);
-            return "{\"error\": \"" + e.getMessage() + "\"}";
-        }
     }
 
     // Method 3: Using OpenAI GPT-4V (if you have credits)
-    public String extractResumeInfoWithOpenAI(MultipartFile pdfFile) {
-        try {
+    public String extractResumeInfoWithOpenAI(MultipartFile pdfFile) throws IOException, InterruptedException {
             if (openaiApiKey == null || openaiApiKey.isEmpty()) {
                 return "{\"error\": \"OpenAI API key not configured\"}";
             }
@@ -292,16 +362,10 @@ public class ResumeParserService {
 
             JsonNode result = objectMapper.readTree(response.body());
             return result.path("choices").get(0).path("message").path("content").asText();
-
-        } catch (Exception e) {
-            log.error("Error processing resume with OpenAI", e);
-            return "{\"error\": \"" + e.getMessage() + "\"}";
-        }
     }
 
     // Method 4: Using LlamaParse (Specialized for document parsing)
-    public String extractResumeInfoWithLlamaParse(MultipartFile pdfFile) {
-        try {
+    public String extractResumeInfoWithLlamaParse(MultipartFile pdfFile) throws IOException, InterruptedException {
             if (llamaParseApiKey == null || llamaParseApiKey.isEmpty()) {
                 return "{\"error\": \"LlamaParse API key not configured\"}";
             }
@@ -360,40 +424,79 @@ public class ResumeParserService {
             // The parsed text can then be sent to any LLM for structured extraction
             String parsedText = getResponse.body();
             return "{\"parsed_content\": " + objectMapper.writeValueAsString(parsedText) + "}";
-
-        } catch (Exception e) {
-            log.error("Error processing resume with LlamaParse", e);
-            return "{\"error\": \"" + e.getMessage() + "\"}";
-        }
     }
 
     // Main method - tries different services in order of preference
+//    public String extractResumeInfo(MultipartFile pdfFile) {
+//        //  Google Gemini first (FREE and excellent PDF support)
+//        if (geminiApiKey != null && !geminiApiKey.isEmpty()) {
+//            log.info("Using Google Gemini for PDF processing");
+//            return extractResumeInfoWithGemini(pdfFile);
+//        }
+//
+//        //  Claude (excellent document understanding)
+//        if (anthropicApiKey != null && !anthropicApiKey.isEmpty()) {
+//            log.info("Using Claude for PDF processing");
+//            return extractResumeInfoWithClaude(pdfFile);
+//        }
+//
+//        //  OpenAI
+//        if (openaiApiKey != null && !openaiApiKey.isEmpty()) {
+//            log.info("Using OpenAI GPT-4V for PDF processing");
+//            return extractResumeInfoWithOpenAI(pdfFile);
+//        }
+//
+//        //  LlamaParse
+//        if (llamaParseApiKey != null && !llamaParseApiKey.isEmpty()) {
+//            log.info("Using LlamaParse for PDF processing");
+//            return extractResumeInfoWithLlamaParse(pdfFile);
+//        }
+//
+//        return "{\"error\": \"No PDF-capable AI service configured. Please add API keys for Gemini, Claude, OpenAI, or LlamaParse.\"}";
+//    }
     public String extractResumeInfo(MultipartFile pdfFile) {
-        //  Google Gemini first (FREE and excellent PDF support)
+        // Google Gemini first (FREE and excellent PDF support)
         if (geminiApiKey != null && !geminiApiKey.isEmpty()) {
-            log.info("Using Google Gemini for PDF processing");
-            return extractResumeInfoWithGemini(pdfFile);
+            try {
+                log.info("Using Google Gemini for PDF processing");
+                return extractResumeInfoWithGemini(pdfFile);
+            } catch (Exception e) {
+                log.warn("Gemini processing failed, trying next service: " + e.getMessage());
+            }
         }
 
-        //  Claude (excellent document understanding)
+        // Claude (excellent document understanding)
         if (anthropicApiKey != null && !anthropicApiKey.isEmpty()) {
-            log.info("Using Claude for PDF processing");
-            return extractResumeInfoWithClaude(pdfFile);
+            try {
+                log.info("Using Claude for PDF processing");
+                return extractResumeInfoWithClaude(pdfFile);
+            } catch (Exception e) {
+                log.warn("Claude processing failed, trying next service: " + e.getMessage());
+            }
         }
 
-        //  OpenAI
+        // OpenAI GPT-4V
         if (openaiApiKey != null && !openaiApiKey.isEmpty()) {
-            log.info("Using OpenAI GPT-4V for PDF processing");
-            return extractResumeInfoWithOpenAI(pdfFile);
+            try {
+                log.info("Using OpenAI GPT-4V for PDF processing");
+                return extractResumeInfoWithOpenAI(pdfFile);
+            } catch (Exception e) {
+                log.warn("OpenAI processing failed, trying next service: " + e.getMessage());
+            }
         }
 
-        //  LlamaParse
+        // LlamaParse
         if (llamaParseApiKey != null && !llamaParseApiKey.isEmpty()) {
-            log.info("Using LlamaParse for PDF processing");
-            return extractResumeInfoWithLlamaParse(pdfFile);
+            try {
+                log.info("Using LlamaParse for PDF processing");
+                return extractResumeInfoWithLlamaParse(pdfFile);
+            } catch (Exception e) {
+                log.warn("LlamaParse processing failed: " + e.getMessage());
+            }
         }
 
-        return "{\"error\": \"No PDF-capable AI service configured. Please add API keys for Gemini, Claude, OpenAI, or LlamaParse.\"}";
+        return "{\"error\": \"Failed to process resume: No available AI service succeeded.\"}";
     }
+
 }
 

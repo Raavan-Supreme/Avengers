@@ -10,7 +10,5 @@ public class Skills {
     private List<String> soft;
     private List<String> tools;
     private List<String> languages;
-
-    // Getters and Setters
 }
 

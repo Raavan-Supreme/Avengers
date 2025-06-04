@@ -59,76 +59,76 @@ public class ResumeParserService {
             // Content structure for Gemini
             Map<String, Object> part1 = new HashMap<>();
         part1.put("text", """
- You are a professional resume parser. Analyze this PDF resume and extract all information strictly in the following JSON format:
- {
-   "personal_info": {
-     "name": "Full Name",
-     "email": "email@example.com",
-     "phone": "phone number",
-     "address": "full address",
-     "linkedin": "LinkedIn URL",
-     "portfolio": "Portfolio/Website URL"
-   },
-   "summary": "Professional summary or objective",
-   "skills": {
-     "technical": ["skill1", "skill2"],
-     "soft": ["skill1", "skill2"],
-     "tools": ["tool1", "tool2"],
-     "languages": ["language1", "language2"]
-   },
-   "experience": [
-     {
-       "company": "Company Name",
-       "position": "Job Title",
-       "duration": "Start Date - End Date",
-       "location": "City, Country",
-       "responsibilities": ["responsibility1", "responsibility2"],
-       "achievements": ["achievement1", "achievement2"]
-     }
-   ],
-   "education": [
-     {
-       "institution": "School/University Name",
-       "degree": "Degree Type and Major",
-       "graduation_year": "Year",
-       "gpa": "GPA if available",
-       "location": "City, Country"
-     }
-   ],
-   "certifications": [
-     {
-       "name": "Certification Name",
-       "issuer": "Issuing Organization",
-       "date": "Date Obtained",
-       "expiry": "Expiry Date if applicable"
-     }
-   ],
-   "projects": [
-     {
-       "name": "Project Name",
-       "description": "Project Description",
-       "technologies": ["tech1", "tech2"],
-       "duration": "Project Duration"
-     }
-   ],
-   "achievements": ["achievement1", "achievement2"],
-   "additional_info": {
-     "hobbies": ["hobby1", "hobby2"],
-     "volunteer": ["volunteer experience"],
-     "references": "References information",
-     "extra_info": {
-        "any_other_fields_not_matching_above": "their values"
-     }
-   }
- }
-
- 🔸 Correct typos and normalize formatting (e.g., "MySql" → "MySQL", "Reactjs" → "React.js").
- 🔸 Map the information strictly to this structure. If any field doesn’t fit any above category, add it into the nested 'additional_info.extra_info' map.
- 🔸 Only return the JSON strictly in the specified structure—no extra text or explanation.
- 🔸 Be thorough and complete, extracting all available information from the resume PDF.
-
- Please strictly follow this format.
-""");
+                 You are a professional resume parser. Analyze this PDF resume and extract all information strictly in the following JSON format:
+                    {
+                       "personal_info": {
+                        "name": "Full Name",
+                        "email": "email@example.com",
+                        "phone": "phone number",
+                        "address": "full address",
+                        "linkedin": "LinkedIn URL",
+                        "portfolio": "Portfolio/Website URL"
+                   },
+                   "summary": "Professional summary or objective",
+                   "skills": {
+                            "technical": ["skill1", "skill2"],
+                            "soft": ["skill1", "skill2"],
+                            "tools": ["tool1", "tool2"],
+                            "languages": ["language1", "language2"]
+                   },
+                   "experience": [
+                     {
+                       "company": "Company Name",
+                       "position": "Job Title",
+                       "duration": "Start Date - End Date",
+                       "location": "City, Country",
+                       "responsibilities": ["responsibility1", "responsibility2"],
+                       "achievements": ["achievement1", "achievement2"]
+                     }
+                   ],
+                   "education": [
+                     {
+                       "institution": "School/University Name",
+                       "degree": "Degree Type and Major",
+                       "graduation_year": "Year",
+                       "gpa": "GPA if available",
+                       "location": "City, Country"
+                     }
+                   ],
+                   "certifications": [
+                     {
+                       "name": "Certification Name",
+                       "issuer": "Issuing Organization",
+                       "date": "Date Obtained",
+                       "expiry": "Expiry Date if applicable"
+                     }
+                   ],
+                   "projects": [
+                     {
+                       "name": "Project Name",
+                       "description": "Project Description",
+                       "technologies": ["tech1", "tech2"],
+                       "duration": "Project Duration"
+                     }
+                   ],
+                   "achievements": ["achievement1", "achievement2"],
+                   "additional_info": {
+                     "hobbies": ["hobby1", "hobby2"],
+                     "volunteer": ["volunteer experience"],
+                     "references": "References information",
+                     "extra_info": {
+                        "any_other_fields_not_matching_above": "their values"
+                     }
+                   }
+                 }
+                
+                 🔸 Correct typos and normalize formatting (e.g., "MySql" → "MySQL", "Reactjs" → "React.js").
+                 🔸 Map the information strictly to this structure. If any field doesn’t fit any above category, add it into the nested 'additional_info.extra_info' map.
+                 🔸 Only return the JSON strictly in the specified structure—no extra text or explanation.
+                 🔸 Be thorough and complete, extracting all available information from the resume PDF.
+                
+                 Please strictly follow this format.
+                """);
 
 //            part1.put("text", """
 //                You are a professional resume parser. Analyze this PDF resume and extract all information in the following JSON format:
@@ -252,12 +252,12 @@ public class ResumeParserService {
             Map<String, Object> content1 = new HashMap<>();
             content1.put("type", "text");
             content1.put("text", """
-               You are a professional and intelligent resume parser. Analyze this PDF resume and extract all information into the following **JSON format**.\s
-               Make sure to:
-              - **Correct any typos** and **standardize formatting** (for example: "MySql" → "MySQL", "Reactjs" → "React.js", "Nodejs" → "Node.js", "Java script" → "JavaScript").
-              - **Return clean and consistent field names** and **avoid spelling mistakes**.
-              - **Follow the provided JSON structure strictly** and return a well-formatted JSON.
-                Please analyze this resume PDF and extract all information in a structured JSON format. Include:
+              You are a professional and intelligent resume parser. Analyze this PDF resume and extract all information into the following **JSON format**.\s
+              Make sure to:
+                - **Correct any typos** and **standardize formatting** (for example: "MySql" → "MySQL", "Reactjs" → "React.js", "Nodejs" → "Node.js", "Java script" → "JavaScript").
+                - **Return clean and consistent field names** and **avoid spelling mistakes**.
+                - **Follow the provided JSON structure strictly** and return a well-formatted JSON.
+              Please analyze this resume PDF and extract all information in a structured JSON format. Include:
                 - Personal information (name, contact details, links)
                 - Professional summary
                 - Skills (categorized by type)
@@ -268,8 +268,8 @@ public class ResumeParserService {
                 - Achievements and awards
                 - Additional information (hobbies, volunteer work, etc.)
                 
-                Be thorough and maintain the original formatting context from the PDF.
-                """);
+               Be thorough and maintain the original formatting context from the PDF.
+               """);
 
             Map<String, Object> content2 = new HashMap<>();
             content2.put("type", "document");

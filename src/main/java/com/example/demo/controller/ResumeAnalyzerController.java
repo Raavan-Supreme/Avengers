@@ -10,6 +10,7 @@ import java.io.IOException;
 
 @RestController
 @RequestMapping("/api")
+@CrossOrigin(origins = "*")
 public class ResumeAnalyzerController {
 
     private final Services analyzerService;

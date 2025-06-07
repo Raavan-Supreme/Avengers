@@ -17,7 +17,7 @@ public class JobDescription {
     @Column(name = "experience_required")
     private String experienceRequired;
 
-    @OneToOne(mappedBy = "jobDescription", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToOne(mappedBy = "jobDescription", cascade = CascadeType.ALL)
     private JobSkills skills;
 }
 

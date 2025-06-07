@@ -49,7 +49,8 @@ public class Resume {
     private AdditionalInfo additional_info;
 
     private Map<String, Object> extraInfo = new HashMap<>();
-
+    private String status;
+    private Double passingPercentage;
     @JsonAnySetter
     public void setExtraInfo(String key, Object value) {
         extraInfo.put(key, value);

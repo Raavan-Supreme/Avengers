@@ -1,6 +1,7 @@
 package com.example.demo.service;
 
 import com.example.demo.entity.JobDescription;
+import com.example.demo.entity.JobSkills;
 import com.example.demo.repository.JobDescriptionRepository;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -89,6 +90,14 @@ public class JDService {
                     .replaceAll("```", "")
                     .trim();
             JobDescription jobDescription = objectMapper.readValue(cleanedJson, JobDescription.class);
+            JobSkills jobSkills = jobDescription.getSkills();
+
+            if (jobSkills != null) {
+                // Set bidirectional references
+                jobSkills.setJobDescription(jobDescription);
+                jobDescription.setSkills(jobSkills);
+            }
+
             jobDescriptionRepository.save(jobDescription);
             Map<String, Object> resultMap = objectMapper.readValue(cleanedJson, new TypeReference<>() {});
             return ResponseEntity.ok(resultMap);

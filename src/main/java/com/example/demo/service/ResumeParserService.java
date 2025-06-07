@@ -1,8 +1,11 @@
 package com.example.demo.service;
 
+import com.example.demo.entity.JobDescription;
+import com.example.demo.repository.JobDescriptionRepository;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -13,15 +16,13 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
-import java.util.Base64;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 @Slf4j
 @Service
+@RequiredArgsConstructor
 public class ResumeParserService {
-
+        private final JobDescriptionRepository jobDescriptionRepository;
     // Claude API (Anthropic) - Excellent PDF reading capabilities
     @Value("${anthropic.api.key:}")
     private String anthropicApiKey;
@@ -46,123 +47,147 @@ public class ResumeParserService {
     private final HttpClient httpClient = HttpClient.newHttpClient();
 
     // Method 1: Using Google Gemini (FREE and excellent PDF support)
-    public String extractResumeInfoWithGemini(MultipartFile pdfFile) throws IOException, InterruptedException {
-            if (geminiApiKey == null || geminiApiKey.isEmpty()) {
-                return "{\"error\": \"Google Gemini API key not configured\"}";
+    public String extractResumeInfoWithGemini(MultipartFile pdfFile, Long jdId) throws IOException, InterruptedException {
+        if (geminiApiKey == null || geminiApiKey.isEmpty()) {
+            return "{\"error\": \"Google Gemini API key not configured\"}";
+        }
+
+        // Convert PDF to base64
+        String base64Pdf = Base64.getEncoder().encodeToString(pdfFile.getBytes());
+
+        Optional<JobDescription> jobDescription = jobDescriptionRepository.findById(jdId);
+
+        // Static Compatibility Criteria (generalized) - all % replaced with %%%% for String.format
+        String staticCriteria =
+                "Use the following static compatibility criteria to evaluate how well a resume matches the job description:\n\n" +
+                        "🔹 Compatibility Criteria (Total: 95%%%%):\n" +
+                        "- The resume covers at least 70%%%% of the technical skills listed in the job description \u2192 40%%%%\n" +
+                        "- The resume includes at least 50%%%% of the tools (e.g., frameworks, libraries, platforms) mentioned in the JD \u2192 25%%%%\n" +
+                        "- The resume refers to at least one of the methodologies or practices stated in the JD (e.g., Agile, Scrum, DevOps) \u2192 10%%%%\n" +
+                        "- The resume summary or experience section includes a job title or role similar to the one in the JD \u2192 10%%%%\n" +
+                        "- The resume is well-structured, complete, and organized according to the expected JSON schema \u2192 10%%%%\n\n" +
+                        "📌 Always assign the compatibility score based on these criteria and return it as a string percentage (e.g., \"85%%%%\") in the 'compatibility' field.\n\n" +
+
+                        "🔸 Additionally, return a field named 'criteria' in the JSON with a detailed explanation of why the resume passed or was rejected based on the compatibility criteria.\n" +
+                        "For example:\n" +
+                        "  - \"Passed because the resume covers 80%%%% technical skills, 60%%%% tools, mentions Agile methodology, and matches job title.\"\n" +
+                        "  - \"Rejected because the resume lacks enough matching tools and does not mention required methodologies.\"\n\n" +
+                        "🔸 The JSON must strictly include the fields: 'compatibility' (string percentage) and 'criteria' (explanation string).\n" +
+                        "🔸 Return the full JSON strictly in the specified structure—no extra text or explanation outside the JSON." +
+                        "Use only the criteria i provided if am asking for one technlogy developer it should be only that technology developer not other";
+
+        String textTemplate =
+                "You are a professional resume parser. Analyze this PDF resume and extract all information strictly in the following JSON format:\n" +
+                        "{\n" +
+                        "  \"personal_info\": { \"name\": \"\", \"email\": \"\", \"phone\": \"\", \"address\": \"\", \"linkedin\": \"\", \"portfolio\": \"\" },\n" +
+                        "  \"summary\": \"\",\n" +
+                        "  \"skills\": { \"technical\": [], \"soft\": [], \"tools\": [], \"languages\": [] },\n" +
+                        "  \"experience\": [ { \"company\": \"\", \"position\": \"\", \"duration\": \"\", \"location\": \"\", \"responsibilities\": [], \"achievements\": [] } ],\n" +
+                        "  \"education\": [ { \"institution\": \"\", \"degree\": \"\", \"graduation_year\": \"\", \"gpa\": \"\", \"location\": \"\" } ],\n" +
+                        "  \"certifications\": [ { \"name\": \"\", \"issuer\": \"\", \"date\": \"\", \"expiry\": \"\" } ],\n" +
+                        "  \"projects\": [ { \"name\": \"\", \"description\": \"\", \"technologies\": [], \"duration\": \"\" } ],\n" +
+                        "  \"achievements\": [],\n" +
+                        "  \"additional_info\": {\n" +
+                        "    \"hobbies\": [],\n" +
+                        "    \"volunteer\": [],\n" +
+                        "    \"references\": \"\",\n" +
+                        "    \"extra_info\": { \"any_other_fields_not_matching_above\": \"\" }\n" +
+                        "  },\n" +
+                        "  \"compatibility\": \"XX%%%%\",\n" +
+                        "  \"criteria\": \"\"\n" +
+                        "}\n\n" +
+                        "🔸 Correct typos and normalize formatting (e.g., \"MySql\" \u2192 \"MySQL\").\n" +
+                        "🔸 Map the information strictly to this structure. If any field doesn’t fit any above category, add it into the nested 'additional_info.extra_info' map.\n" +
+                        "🔸 Only return the JSON strictly in the specified structure—no extra text or explanation.\n" +
+                        "🔸 Be thorough and complete, extracting all available information from the resume PDF.\n\n" +
+                        "Now also match this resume against the following job description:\n" +
+                        "{\n" +
+                        "  \"title\": \"%s\",\n" +
+                        "  \"skills\": {\n" +
+                        "    \"technical\": %s,\n" +
+                        "    \"tools\": %s,\n" +
+                        "    \"methodologies\": %s\n" +
+                        "  }\n" +
+                        "}\n\n" +
+                        staticCriteria;
+
+        // Sanitize inputs to escape % signs, to prevent format errors
+        String safeTitle = jobDescription.map(JobDescription::getTitle).orElse("null").replace("%", "%%");
+        String safeTechnical = jobDescription.map(jd -> {
+            try {
+                return objectMapper.writeValueAsString(
+                        jd.getSkills() != null ? jd.getSkills().getTechnical() : List.of()
+                ).replace("%", "%%");
+            } catch (JsonProcessingException e) {
+                return "[]";
             }
-
-            // Convert PDF to base64
-            String base64Pdf = Base64.getEncoder().encodeToString(pdfFile.getBytes());
-
-            Map<String, Object> payload = new HashMap<>();
-
-            // Content structure for Gemini
-            Map<String, Object> part1 = new HashMap<>();
-        part1.put("text", """
-                 You are a professional resume parser. Analyze this PDF resume and extract all information strictly in the following JSON format:
-                    {
-                       "personal_info": {
-                        "name": "Full Name",
-                        "email": "email@example.com",
-                        "phone": "phone number",
-                        "address": "full address",
-                        "linkedin": "LinkedIn URL",
-                        "portfolio": "Portfolio/Website URL"
-                   },
-                   "summary": "Professional summary or objective",
-                   "skills": {
-                            "technical": ["skill1", "skill2"],
-                            "soft": ["skill1", "skill2"],
-                            "tools": ["tool1", "tool2"],
-                            "languages": ["language1", "language2"]
-                   },
-                   "experience": [
-                     {
-                       "company": "Company Name",
-                       "position": "Job Title",
-                       "duration": "Start Date - End Date",
-                       "location": "City, Country",
-                       "responsibilities": ["responsibility1", "responsibility2"],
-                       "achievements": ["achievement1", "achievement2"]
-                     }
-                   ],
-                   "education": [
-                     {
-                       "institution": "School/University Name",
-                       "degree": "Degree Type and Major",
-                       "graduation_year": "Year",
-                       "gpa": "GPA if available",
-                       "location": "City, Country"
-                     }
-                   ],
-                   "certifications": [
-                     {
-                       "name": "Certification Name",
-                       "issuer": "Issuing Organization",
-                       "date": "Date Obtained",
-                       "expiry": "Expiry Date if applicable"
-                     }
-                   ],
-                   "projects": [
-                     {
-                       "name": "Project Name",
-                       "description": "Project Description",
-                       "technologies": ["tech1", "tech2"],
-                       "duration": "Project Duration"
-                     }
-                   ],
-                   "achievements": ["achievement1", "achievement2"],
-                   "additional_info": {
-                     "hobbies": ["hobby1", "hobby2"],
-                     "volunteer": ["volunteer experience"],
-                     "references": "References information",
-                     "extra_info": {
-                        "any_other_fields_not_matching_above": "their values"
-                     }
-                   }
-                 }
-                
-                 🔸 Correct typos and normalize formatting (e.g., "MySql" → "MySQL", "Reactjs" → "React.js").
-                 🔸 Map the information strictly to this structure. If any field doesn’t fit any above category, add it into the nested 'additional_info.extra_info' map.
-                 🔸 Only return the JSON strictly in the specified structure—no extra text or explanation.
-                 🔸 Be thorough and complete, extracting all available information from the resume PDF.
-                
-                 Please strictly follow this format.
-                """);
-            Map<String, Object> part2 = new HashMap<>();
-            Map<String, Object> inlineData = new HashMap<>();
-            inlineData.put("mime_type", "application/pdf");
-            inlineData.put("data", base64Pdf);
-            part2.put("inline_data", inlineData);
-
-            Map<String, Object> content = new HashMap<>();
-            content.put("parts", List.of(part1, part2));
-
-            payload.put("contents", List.of(content));
-
-            // Generation config
-            Map<String, Object> generationConfig = new HashMap<>();
-            generationConfig.put("temperature", 0.1);
-            generationConfig.put("maxOutputTokens", 4000);
-            payload.put("generationConfig", generationConfig);
-
-            String json = objectMapper.writeValueAsString(payload);
-
-            HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create(geminiApiUrl + "?key=" + geminiApiKey))
-                    .header("Content-Type", "application/json")
-                    .POST(HttpRequest.BodyPublishers.ofString(json))
-                    .build();
-
-            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-
-            if (response.statusCode() != 200) {
-                log.error("Gemini API error: {}", response.body());
-                return "{\"error\": \"Gemini API call failed: " + response.body() + "\"}";
+        }).orElse("[]");
+        String safeTools = jobDescription.map(jd -> {
+            try {
+                return objectMapper.writeValueAsString(
+                        jd.getSkills() != null ? jd.getSkills().getTools() : List.of()
+                ).replace("%", "%%");
+            } catch (JsonProcessingException e) {
+                return "[]";
             }
+        }).orElse("[]");
+        String safeMethodologies = jobDescription.map(jd -> {
+            try {
+                return objectMapper.writeValueAsString(
+                        jd.getSkills() != null ? jd.getSkills().getMethodologies() : List.of()
+                ).replace("%", "%%");
+            } catch (JsonProcessingException e) {
+                return "[]";
+            }
+        }).orElse("[]");
 
-            JsonNode result = objectMapper.readTree(response.body());
-            return result.path("candidates").get(0).path("content").path("parts").get(0).path("text").asText();
+        Map<String, Object> part1 = new HashMap<>();
+        part1.put("text", String.format(
+                textTemplate,
+                safeTitle,
+                safeTechnical,
+                safeTools,
+                safeMethodologies
+        ));
+
+        Map<String, Object> part2 = new HashMap<>();
+        Map<String, Object> inlineData = new HashMap<>();
+        inlineData.put("mime_type", "application/pdf");
+        inlineData.put("data", base64Pdf);
+        part2.put("inline_data", inlineData);
+
+        Map<String, Object> content = new HashMap<>();
+        content.put("parts", List.of(part1, part2));
+
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("contents", List.of(content));
+
+        // Generation configuration
+        Map<String, Object> generationConfig = new HashMap<>();
+        generationConfig.put("temperature", 0.1);
+        generationConfig.put("maxOutputTokens", 4000);
+        payload.put("generationConfig", generationConfig);
+
+        // Make the HTTP request to Gemini API
+        String json = objectMapper.writeValueAsString(payload);
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(geminiApiUrl + "?key=" + geminiApiKey))
+                .header("Content-Type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString(json))
+                .build();
+
+        HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+
+        if (response.statusCode() != 200) {
+            log.error("Gemini API error: {}", response.body());
+            return "{\"error\": \"Gemini API call failed: " + response.body() + "\"}";
+        }
+
+        JsonNode result = objectMapper.readTree(response.body());
+
+        String extractedJsonString = result.path("candidates").get(0).path("content").path("parts").get(0).path("text").asText();
+
+        return extractedJsonString;
     }
 
     // Method 2: Using Claude (Anthropic) - Excellent document understanding
@@ -357,12 +382,12 @@ public class ResumeParserService {
             return "{\"parsed_content\": " + objectMapper.writeValueAsString(parsedText) + "}";
     }
 
-    public String extractResumeInfo(MultipartFile pdfFile) {
+    public String extractResumeInfo(MultipartFile pdfFile, Long jd) {
         // Google Gemini first (FREE and excellent PDF support)
         if (geminiApiKey != null && !geminiApiKey.isEmpty()) {
             try {
                 log.info("Using Google Gemini for PDF processing");
-                return extractResumeInfoWithGemini(pdfFile);
+                return extractResumeInfoWithGemini(pdfFile , jd);
             } catch (Exception e) {
                 log.warn("Gemini processing failed, trying next service: " + e.getMessage());
             }

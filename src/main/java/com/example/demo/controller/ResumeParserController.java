@@ -18,7 +18,7 @@ public class ResumeParserController {
     private final ResumeParserService resumeParserService;
 
     @PostMapping
-    public ResponseEntity<Object> parseResume(@RequestParam("file") MultipartFile file) {
+    public ResponseEntity<Object> parseResume(@RequestParam("file") MultipartFile file, Long jd) {
         try {
             if (file.isEmpty()) {
                 return ResponseEntity.badRequest().body("{\"error\": \"Please select a file to upload\"}");
@@ -28,7 +28,7 @@ public class ResumeParserController {
                 return ResponseEntity.badRequest().body("{\"error\": \"Only PDF files are supported\"}");
             }
 
-            String result = resumeParserService.extractResumeInfo(file);
+            String result = resumeParserService.extractResumeInfo(file, jd);
             if ((result.startsWith("'''json") || result.startsWith("```json")) &&
                     (result.endsWith("'''") || result.endsWith("```"))) {
 
@@ -50,13 +50,13 @@ public class ResumeParserController {
     }
 
     @PostMapping("/parse/gemini")
-    public ResponseEntity<String> parseResumeWithGemini(@RequestParam("file") MultipartFile file) {
+    public ResponseEntity<String> parseResumeWithGemini(@RequestParam("file") MultipartFile file, Long jd) {
         try {
             if (file.isEmpty()) {
                 return ResponseEntity.badRequest().body("{\"error\": \"Please select a file to upload\"}");
             }
 
-            String result = resumeParserService.extractResumeInfoWithGemini(file);
+            String result = resumeParserService.extractResumeInfoWithGemini(file, jd);
             return ResponseEntity.ok(result);
 
         } catch (Exception e) {

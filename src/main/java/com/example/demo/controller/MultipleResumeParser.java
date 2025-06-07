@@ -5,6 +5,7 @@ import com.example.demo.dto.Resume;
 import com.example.demo.repository.ResumeRepository;
 import com.example.demo.service.ResumeParserService;
 import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -25,9 +26,8 @@ public class MultipleResumeParser {
     private final ResumeRepository resumeRepository;
 
     @PostMapping
-    public ResponseEntity<List<Resume>> parseResumes(@RequestParam("file") MultipartFile[] files) {
+    public ResponseEntity<List<Resume>> parseResumes(@RequestParam("file") MultipartFile[] files, Long id) {
         List<Resume> responses = new ArrayList<>();
-        Response response = new Response();
         ObjectMapper mapper = new ObjectMapper();
         mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
 
@@ -40,39 +40,80 @@ public class MultipleResumeParser {
                     continue;
                 }
 
-                if (!file.getContentType().equals("application/pdf")) {
+                if (!"application/pdf".equalsIgnoreCase(file.getContentType())) {
                     Resume errorResume = new Resume();
                     errorResume.setName("Error: Only PDF files are supported - " + file.getOriginalFilename());
                     responses.add(errorResume);
                     continue;
                 }
 
-                String result = resumeParserService.extractResumeInfo(file);
+                // Extract resume info JSON string from service
+                String result = resumeParserService.extractResumeInfo(file, id);
+
+                // Remove any markdown JSON markers if present
                 if ((result.startsWith("'''json") || result.startsWith("```json")) &&
                         (result.endsWith("'''") || result.endsWith("```"))) {
                     result = result.replaceFirst("^('''|```)[jJ][sS][oO][nN]\\s*", "");
                     result = result.replaceFirst("('''|```)$", "");
                 }
 
-                Resume resume = mapper.readValue(result, Resume.class);
-                responses.add(resume);
-                resume.setEmail(resume.getPersonal_info().getEmail());
-                resume.setName(resume.getPersonal_info().getName());
-                resume.setPhNo(resume.getPersonal_info().getPhone());
+                // Parse the JSON string to JsonNode to check compatibility
+                JsonNode jsonNode = mapper.readTree(result);
+                String compatibilityStr = jsonNode.path("compatibility").asText().replace("%", "");
+
+                int compatibility = 0;
+                try {
+                    compatibility = Integer.parseInt(compatibilityStr);
+                } catch (NumberFormatException e) {
+                    Resume errorResume = new Resume();
+                    errorResume.setName("Error: Invalid compatibility format in resume - " + file.getOriginalFilename());
+                    responses.add(errorResume);
+                    continue;
+                }
+
+                if (compatibility < 60) {
+                    Resume rejectedResume = new Resume();
+                    rejectedResume.setName(jsonNode.path("personal_info").path("name").asText("Unknown"));
+                    rejectedResume.setEmail(jsonNode.path("personal_info").path("email").asText(""));
+                    rejectedResume.setPhNo(jsonNode.path("personal_info").path("phone").asText(""));
+                    rejectedResume.setUploadDate(LocalDateTime.now());
+                    rejectedResume.setCompatibility(compatibilityStr + "%");
+                    rejectedResume.setStatus("rejected");
+                    rejectedResume.setRejectionReason("Compatibility below threshold (" + compatibilityStr + "%)");
+                    responses.add(rejectedResume);
+                    continue;  // skip saving rejected resumes
+                }
+
+                // Deserialize into Resume object
+                Resume resume = mapper.treeToValue(jsonNode, Resume.class);
+
+                // Set some additional fields for convenience and db
+                resume.setEmail(resume.getPersonal_info() != null ? resume.getPersonal_info().getEmail() : null);
+                resume.setName(resume.getPersonal_info() != null ? resume.getPersonal_info().getName() : null);
+                resume.setPhNo(resume.getPersonal_info() != null ? resume.getPersonal_info().getPhone() : null);
                 resume.setUploadDate(LocalDateTime.now());
+                resume.setCompatibility(compatibilityStr + "%");
+                resume.setStatus("accepted");
+
+                // Save to database
                 Resume savedResume = resumeRepository.save(resume);
-                response.setResponse(responses);
+
+                responses.add(savedResume);
+
             } catch (Exception e) {
                 Resume errorResume = new Resume();
                 errorResume.setName("Error: Failed to process " + file.getOriginalFilename() + ": " + e.getMessage());
-                responses.add(errorResume);            }
+                responses.add(errorResume);
+            }
         }
-        return ResponseEntity.ok().body(responses);
+        return ResponseEntity.ok(responses);
     }
+
 
     // Similarly update for Gemini
     @PostMapping("/parse/gemini")
-    public ResponseEntity<List<Object>> parseResumesWithGemini(@RequestParam("files") MultipartFile[] files) {
+    public ResponseEntity<List<Object>> parseResumesWithGemini(@RequestParam("files") MultipartFile[] files,
+                                                               Long jd) {
         List<Object> responses = new ArrayList<>();
 
         for (MultipartFile file : files) {
@@ -81,7 +122,7 @@ public class MultipleResumeParser {
                     responses.add("{\"error\": \"File is empty: " + file.getOriginalFilename() + "\"}");
                     continue;
                 }
-                String result = resumeParserService.extractResumeInfoWithGemini(file);
+                String result = resumeParserService.extractResumeInfoWithGemini(file, jd);
                 responses.add(result);
             } catch (Exception e) {
                 responses.add("{\"error\": \"Failed to process " + file.getOriginalFilename() + ": " + e.getMessage() + "\"}");

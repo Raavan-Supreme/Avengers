@@ -42,6 +42,7 @@ public class Resume {
     @OneToMany(cascade = CascadeType.ALL)
     private List<Project> projects;
 
+    @Lob
     @ElementCollection
     private List<String> achievements;
 
@@ -50,6 +51,12 @@ public class Resume {
 
     private Map<String, Object> extraInfo = new HashMap<>();
 
+    private String compatibility;
+    @Lob
+    @Column
+    private String criteria;
+    private String status;
+    private String rejectionReason;
     @JsonAnySetter
     public void setExtraInfo(String key, Object value) {
         extraInfo.put(key, value);

@@ -19,7 +19,6 @@ import java.util.Map;
 public class GetInformationController {
 
     private final ResumeRepository resumeRepository;
-    private final JDService jDService;
 
     @GetMapping
     public ResponseEntity<List<Resume>> getResume(@RequestBody(required = false)

@@ -40,9 +40,6 @@ public class User implements Serializable{
     @Column(name = "email")
     private String email;
 
-    @Column(name = "mobile_no")
-    private String mobileNo;
-
     @Enumerated(EnumType.STRING)
     @Column(name = "user_type")
     private UserType userType;

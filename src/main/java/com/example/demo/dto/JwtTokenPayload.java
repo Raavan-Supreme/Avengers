@@ -12,6 +12,5 @@ public class JwtTokenPayload {
     private String userId;
     private String fullName;
     private String email;
-    private String mobileNo;
     private User.UserType userType;
 }

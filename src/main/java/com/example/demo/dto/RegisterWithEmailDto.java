@@ -16,9 +16,6 @@ public class RegisterWithEmailDto {
     @Pattern(regexp = "^[A-Za-z ]+$", message = "Invalid Name format")
     private String name;
 
-
-    private String address = null;
-
     private User.UserType userRole = null;
 
     @NotBlank(message = "Email address is required")
@@ -26,19 +23,12 @@ public class RegisterWithEmailDto {
     @Size(max = 254, message = "Email address is too long (maximum 254 characters)")
     private String email;
 
-
-
-    @NotNull(message = "Mobile number cannot be null")
-    @Size(min = 10, max = 10, message = "Mobile number must be exactly 10 characters")
-    @Pattern(regexp = "^\\d{10}$", message = "Invalid mobile number format")
-    private String mobileNo;
-
     @NotNull
     @NotEmpty
     private String password;
 
     @NotNull
     @NotEmpty
-    private String comfirmPassword;
+    private String confirmPassword;
 
 }
